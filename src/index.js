@@ -106,18 +106,25 @@ function loadModel(item) {
 }
 var membraneTopAnim = false;
 var particleMoveAnim = false;
+var secondParticleMoveAnim = false;
 function onSelect() {
     Object.keys(models).forEach((e) => {
         scene.add(models[e]);
     });
-    models.particle.position.x = 1;
+    models.particle.position.set(1, -0.01, -0.018);
     models.particle.scale.set(0.025, 0.025, 0.025);
+    document.getElementById("textWrapper").innerText =
+        "The dots you see on the membrane are various cell receptors, including the COVID's target, ACE2.";
     setTimeout(() => {
         membraneTopAnim = true;
+        document.getElementById("textWrapper").innerText =
+            "Let's halve the cell for a better look inside";
         setTimeout(() => {
             models.cell.children[8].visible = false;
             membraneTopAnim = false;
             setTimeout(() => {
+                document.getElementById("textWrapper").innerText =
+                    "Now, we can see the particle moving to the receptor";
                 particleMoveAnim = true;
             }, 2000);
         }, 2000);
@@ -131,15 +138,6 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 var display = false;
-
-var displayText = function (text) {
-    document.getElementById("textWrapper").innerText = text;
-    document.getElementById("textWrapper").style.display = "block";
-};
-
-var hideText = function () {
-    document.getElementById("textWrapper").style.display = "none";
-};
 
 // Raycaster
 var raycaster = new THREE.Raycaster();
@@ -159,19 +157,12 @@ function raycast(position, direction) {
     for (var i = 0; i < intersects.length; i++) {
         var obj = intersects[i].object;
         //https://threejs.org/docs/#manual/en/introduction/Creating-text
-        if (typeof obj.material.color != "undefined" && obj.material.color) {
-            displayText(text);
-            displayedText = true;
-        }
-    }
-
-    if (!displayedText) {
-        hideText();
     }
 }
 
-var runBefore = false;
-
+var finalAnim = false;
+let duplicateCount = 0;
+let duplicateParticles = [];
 function render() {
     if (sessionStarted) {
         var xrCamera = renderer.xr.getCamera(camera);
@@ -196,12 +187,60 @@ function render() {
             if (membraneTopAnim) {
                 models.cell.children[8].position.y += 0.3;
             }
-            if (membraneTopAnim) {
-                models.particle.position.x -= 0.01;
-                if (models.particle.position.x == 0.1) {
+            if (particleMoveAnim) {
+                models.particle.position.x -= 0.0075;
+                if (models.particle.position.x <= 0.248) {
                     particleMoveAnim = false;
-
+                    setTimeout(() => {
+                        secondParticleMoveAnim = true;
+                    }, 1000);
                 }
+            }
+            if (secondParticleMoveAnim) {
+                models.particle.position.x -= 0.075;
+                if (models.particle.position.x <= 0.15) {
+                    secondParticleMoveAnim = false;
+                    document.getElementById("textWrapper").innerText =
+                        "Now that the COVID particle is inside, it can replicate and later exit the cell.";
+                    setTimeout(() => {
+                        models.particle.visible = false;
+
+                        var interval = setInterval(() => {
+                            model = models.particle.clone();
+                            model.position.set(
+                                (Math.random() - 0.5) / 2,
+                                (Math.random() - 0.5) / 2,
+                                (Math.random() - 0.5) / 2
+                            );
+                            model.visible = true
+                            scene.add(model);
+                            duplicateParticles.push(model);
+                            duplicateCount++;
+                            if (duplicateCount == 10) {
+                                clearInterval(interval);
+
+                                setTimeout(() => {
+                                    finalAnim = true;
+                                    setTimeout(() => {
+                                        models.cell.children[9].visible = false;
+                                        
+                                    }, 1000);
+                                }, 1500);
+                            }
+                        }, 500);
+                    }, 2000);
+                }
+            }
+            if (finalAnim) {
+                console.log("finalAnim");
+                setTimeout(() => {
+                    finalAnim = false;
+                }, 5000);
+                duplicateParticles.forEach((e) => {
+                    e.position.x += e.position.x < 0 ? -0.01 : 0.01;
+                    e.position.y += e.position.y < 0 ? -0.01 : 0.01;
+                    e.position.z += e.position.z < 0 ? -0.01 : 0.01;
+                });
             }
         }
     }

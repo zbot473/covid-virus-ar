@@ -11,7 +11,7 @@ canvas {
 #overlay {
     color: white;
     font-family: Helvetica;
-    margin-top: 10px;
+    padding-top: 40px;
 }
 
 .btn {
